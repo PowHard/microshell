@@ -12,8 +12,8 @@ int error(char *str)
 int	cd(char **av, int i)
 {
 	if (i != 2)
-		return error ("error: cd: bad arguments\n");
-	else if (chdir(av[1]) -1)
+		return (error("error: cd: bad arguments\n"));
+	else if (chdir(av[1]) == -1)
 		return error("error: cd: cannot change directory to "), error(av[1]), error("\n");
 	return (0);
 }
@@ -24,7 +24,7 @@ int	set_pipe(int is_pipe, int *fd, int i)
 	return (0);
 }
 
-int exec(char **av, char **env, int i)
+int exec(char **av, char **envp, int i)
 {
 	int fd[2];
 	int status;
@@ -39,7 +39,7 @@ int exec(char **av, char **env, int i)
 		av[i] = 0;
 		if (set_pipe(is_pipe, fd, 1) == 1)
 			return (error("error: fatal\n"));
-		execve(*av, av, env);
+		execve(*av, av, envp);
 		return (error("error: cannot execute "), error(*av), error("\n"));
 	}
 	waitpid(pid, &status, 0);
@@ -63,7 +63,7 @@ int main (int ac, char **av, char **envp)
 			if (!strcmp(*av, "cd"))
 				status = cd(av, i);
 			else if (i)
-			status = exec(av, envp, i);
+				status = exec(av, envp, i);
 		}
 	}
 	return (status);
