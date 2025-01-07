@@ -20,7 +20,7 @@ int	cd(char **av, int i)
 int	set_pipe(int is_pipe, int *fd, int i)
 {
 	if (is_pipe && (dup2(fd[i], i) == -1 || close(fd[0]) == -1 || close(fd[1]) == -1))
-		return (1);// check compatibility whith return in exec
+		return (1);
 	return (0);
 }
 
