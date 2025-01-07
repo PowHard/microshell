@@ -1,71 +1,70 @@
-# include <stdlib.h>
-# include <unistd.h>
-# include <sys/wait.h>
-# include <string.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 
-void	print_err(char *str)
+int error(char *str)
 {
 	while (*str)
 		write(2, str++, 1);
+	return (1);
 }
-
-int	cd(char **arv, int i)
+int	cd(char **av, int i)
 {
 	if (i != 2)
-		return (print_err("error: bad arguments\n")), 1;
-	if (chdir(arv[1]) == -1)
-		return (print_err("error: cd: cannot change directory to "), print_err(arv[1]), print_err("\n")), 1;
+		return error ("error: cd: bad arguments\n");
+	else if (chdir(av[1]) -1)
+		return error("error: cd: cannot change directory to "), error(av[1]), error("\n");
+	return (0);
+}
+int	set_pipe(int is_pipe, int *fd, int i)
+{
+	if (is_pipe && (dup2(fd[i], i) == -1 || close(fd[0]) == -1 || close(fd[1]) == -1))
+		return (1);// check compatibility whith return in exec
 	return (0);
 }
 
-void	set_pipe(int has_pipe, int *fd, int end)
+int exec(char **av, char **env, int i)
 {
-	if (has_pipe && (dup2(fd[end], end) == -1 || close(fd[0]) == -1 || close(fd[1]) == -1))
-		print_err("error: fatal\n"), exit(1);
-}
+	int fd[2];
+	int status;
+	int is_pipe = av[i] && !strcmp(av[i], "|");
 
-int	exec(char **arv, int i, char **envp)
-{
-	int	has_pipe;
-	int	fd[2];
-	int	pid;
-	int	status;
-
-	has_pipe = arv[i] && !strcmp(arv[i], "|");
-	if (!has_pipe && !strcmp(*arv, "cd"))
-		return(cd(arv, i));
-	if (has_pipe && pipe(fd) == -1)
-		print_err("error: fatal\n"), exit(1);
-	if ((pid = fork()) == -1)
-		print_err("error: fatal\n"), exit(1);
+	if (is_pipe && pipe(fd) == -1)
+		return (error("error: fatal\n"));
+	
+	int pid = fork();
 	if (!pid)
 	{
-		arv[i] = 0;
-		set_pipe(has_pipe, fd, 1);
-		if (!strcmp(*arv, "cd"))
-			exit(cd(arv, i));
-		execve(*arv, arv, envp);
-		print_err("error: cannot execute "), print_err(*arv), print_err("\n"), exit(1);
+		av[i] = 0;
+		if (set_pipe(is_pipe, fd, 1) == 1)
+			return (error("error: fatal\n"));
+		execve(*av, av, env);
+		return (error("error: cannot execute "), error(*av), error("\n"));
 	}
 	waitpid(pid, &status, 0);
-	set_pipe(has_pipe, fd, 0);
+	set_pipe(is_pipe, fd, 0);
 	return (WIFEXITED(status) && WEXITSTATUS(status));
-
 }
-int	main (int arc, char **arv, char **envp)
-{
-	(void)arc;
-	int	i = 0;
-	int status = 0;
 
-	while (arv[i])
+int main (int ac, char **av, char **envp)
+{
+	int	i = 0;
+	int	status = 0;
+
+	if (ac > 1)
 	{
-		arv += i + 1;
-		i = 0;
-		while (arv[i] && strcmp(arv[i], "|") && strcmp(arv[i], ";"))
-			i++;
-		if (i)
-			status = exec(arv, i, envp);
+		while (av[i] && av[++i])
+		{
+			av += i;
+			i = 0;
+			while (av[i] && strcmp(av[i], "|") && strcmp(av[i], ";"))
+				i++;
+			if (!strcmp(*av, "cd"))
+				status = cd(av, i);
+			else if (i)
+			status = exec(av, envp, i);
+		}
 	}
 	return (status);
 }
